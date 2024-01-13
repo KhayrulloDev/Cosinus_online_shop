@@ -29,13 +29,13 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.postgres'
-]
-
-# apps
-INSTALLED_APPS += [
     'main',
     'users',
 ]
+
+
+STRIPE_PUBLIC_KEY = os.getenv("STRIPE_PUBLIC_KEY")
+STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY")
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',

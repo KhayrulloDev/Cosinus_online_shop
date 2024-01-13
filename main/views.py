@@ -1,4 +1,5 @@
 import json
+import stripe
 from random import sample
 
 from django.contrib import messages
@@ -10,7 +11,7 @@ from django.views import View
 
 from models import Product, Basket, Order
 from .forms import OrderForm
-from .utils import increment_count, decrement_count
+from .utils import increment_count, decrement_count, save_order_to_database
 
 
 class HomeView(View):
@@ -146,6 +147,46 @@ class ListOrdersView(View):
     def get(self, request, *args, **kwargs):
         orders = Order.objects.all()
         return render(request, self.template_name, {'orders': orders})
+
+
+class ChargeView(View):
+    template_name = 'paymant.html'
+
+    def post(self, request, *args, **kwargs):
+        token = request.POST.get('stripeToken')
+        amount = float(request.POST.get('amount_pay', 0))
+        amount = amount * 100
+        if amount:
+            try:
+                customer = stripe.Customer.create(
+                    email=request.user.email,
+                    source=token,
+                )
+                order = save_order_to_database(
+                    user=request.user,
+                    amount=amount,
+                    product_id=request.POST.get('product_id'),
+                    quantity=request.POST.get('quantity'),
+                    to_whom=request.POST.get('to_whom'),
+                    delivery_time=request.POST.get('delivery_time'),
+                    place_of_delivery=request.POST.get('place_of_delivery')
+                )
+
+                # Pul yechib olish
+                charge = stripe.Charge.create(
+                    amount=amount,
+                    currency='uzs',
+                    description=f'Buyurtma #{order.id}',
+                    customer=customer.id,
+                )
+
+                return render(request, self.template_name, {'success': charge})
+            except stripe.error.CardError as e:
+                return render(request, 'paymant.html', {'error': e})
+        else:
+            return render(request, 'paymant.html', {'error': "Noto'g'ri formatdagi summa"})
+
+
 
 
 class IncrementCountView(View):
