@@ -1,4 +1,7 @@
 import json
+from sqlite3 import IntegrityError
+from .models import BankCard
+from .utils import step_3
 import stripe
 from random import sample
 
@@ -187,6 +190,37 @@ class ChargeView(View):
             return render(request, 'paymant.html', {'error': "Noto'g'ri formatdagi summa"})
 
 
+
+class AddCardView(View):
+
+    def get(self, request):
+        return render(request, 'add-card.html')
+    def post(self, request, *args, **kwargs):
+        cart_number1 = request.POST.get('cart_nuber')
+        expiration_date = request.POST.get('expiration_date')
+        cvc = request.POST.get('cvc')
+
+        card_number = step_3(cart_number1)
+
+        try:
+            card_data = BankCard.objects.get(card_number=card_number)
+        except BankCard.DoesNotExist:
+            card_data = None
+
+        if card_data:
+            return JsonResponse({'success': False, 'message': 'Card already exists!'}, status=400)
+        else:
+            try:
+                BankCard.objects.create(
+                    card_number=card_number,
+                    card_expiration=expiration_date,
+                    card_cvc=cvc,
+                    user_id=request.POST.get('user_id')
+                )
+            except IntegrityError:
+                return JsonResponse({'success': False, 'message': 'IntegrityError occurred'}, status=500)
+
+        return JsonResponse({'success': True, 'message': 'Successfully added'})
 
 
 class IncrementCountView(View):
